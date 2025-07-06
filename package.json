@@ -4,13 +4,23 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts"
+    "dev": "bun run devstart.ts",
+    "start": "bun run client:build && bun run server:start",
+    "server:start": "bun run src/index.ts",
+    "server:dev": "bun run --watch src/index.ts",
+    "client:build": "bun build ./src/client/index.tsx --outdir ./public",
+    "client:dev": "bun build ./src/client/index.tsx --outdir ./public --watch"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   }
 }
