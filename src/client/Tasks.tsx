@@ -4,7 +4,6 @@ import type { Task } from "../common";
 interface TaskItemProps {
     task: Task;
     id: number;
-    interactive: boolean;
     onSetDone: (id: number, done: boolean) => void;
     onDelete: (id: number) => void;
     onBeginEdit: (id: number) => void;
@@ -15,17 +14,12 @@ function TaskItem(props: TaskItemProps) {
         props.onSetDone(props.id, !props.task.done);
     }
 
-    return props.interactive ?
-        <div>
-            <span onClick={toggleDone}>{props.task.done ? "[X]" : "[ ]"}</span>
-            <span>{props.task.title}</span>
-            <span onClick={() => props.onDelete(props.id)}>[DEL]</span>
-            <span onClick={() => props.onBeginEdit(props.id)}>[EDIT]</span>
-        </div> :
-        <div>
-            <span>{props.task.done ? "[X]" : "[ ]"}</span>
-            <span>{props.task.title}</span>
-        </div>
+    return <div>
+        <span onClick={toggleDone}>{props.task.done ? "[X]" : "[ ]"}</span>
+        <span>{props.task.title}</span>
+        <span onClick={() => props.onDelete(props.id)}>[DEL]</span>
+        <span onClick={() => props.onBeginEdit(props.id)}>[EDIT]</span>
+    </div>
 }
 
 interface TaskEditItemProps {
@@ -72,6 +66,17 @@ function TaskEditItem(props: TaskEditItemProps) {
         />
         <span onClick={() => props.onFinishEdit(props.id, value)}>[OK]</span>
         <span onClick={() => props.onFinishEdit(props.id)}>[CANCEL]</span>
+    </div>
+}
+
+interface TaskFixedProps {
+    task: Task;
+}
+
+function TaskFixedItem(props: TaskFixedProps) {
+    return <div>
+        <span>{props.task.done ? "[X]" : "[ ]"}</span>
+        <span>{props.task.title}</span>
     </div>
 }
 
@@ -152,22 +157,27 @@ export function TaskList(props: { tasks: Task[] }) {
         }
     }
 
-    const list = tasks.map((task, id) => id == editItem ?
-        <TaskEditItem
-            task={task}
-            key={id}
-            id={id}
-            onFinishEdit={finishEdit}
-        /> :
-        <TaskItem
-            task={task}
-            key={id}
-            id={id}
-            interactive={editItem < 0}
-            onSetDone={setDone}
-            onDelete={deleteItem}
-            onBeginEdit={beginEdit}
-        />);
+    const list = tasks.map((task, id) => {
+        if (id == editItem) {
+            return <TaskEditItem
+                task={task}
+                key={id}
+                id={id}
+                onFinishEdit={finishEdit}
+            />
+        } else if (editItem < 0) {
+            return <TaskItem
+                task={task}
+                key={id}
+                id={id}
+                onSetDone={setDone}
+                onDelete={deleteItem}
+                onBeginEdit={beginEdit}
+            />
+        } else {
+            return <TaskFixedItem task={task} key={id} />
+        }
+    });
     return <div>
         {list}
         <TaskNew onNewTask={addItem} enabled={editItem < 0} />
