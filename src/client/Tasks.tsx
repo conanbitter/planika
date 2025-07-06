@@ -1,30 +1,86 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Task } from "../common";
 
-interface TaskItemParams {
-    task: Task,
-    id: number,
-    onSetDone: (id: number, done: boolean) => void,
-    onDelete: (id: number) => void
+interface TaskItemProps {
+    task: Task;
+    id: number;
+    interactive: boolean;
+    onSetDone: (id: number, done: boolean) => void;
+    onDelete: (id: number) => void;
+    onBeginEdit: (id: number) => void;
 }
 
-function TaskItem(params: TaskItemParams) {
+function TaskItem(props: TaskItemProps) {
     const toggleDone = () => {
-        params.onSetDone(params.id, !params.task.done);
+        props.onSetDone(props.id, !props.task.done);
     }
 
-    return <div>
-        <span onClick={toggleDone}>{params.task.done ? "[X]" : "[ ]"}</span>
-        <span>{params.task.title}</span>
-        <span onClick={() => params.onDelete(params.id)}>[DEL]</span>
+    return props.interactive ?
+        <div>
+            <span onClick={toggleDone}>{props.task.done ? "[X]" : "[ ]"}</span>
+            <span>{props.task.title}</span>
+            <span onClick={() => props.onDelete(props.id)}>[DEL]</span>
+            <span onClick={() => props.onBeginEdit(props.id)}>[EDIT]</span>
+        </div> :
+        <div>
+            <span>{props.task.done ? "[X]" : "[ ]"}</span>
+            <span>{props.task.title}</span>
+        </div>
+}
+
+interface TaskEditItemProps {
+    task: Task;
+    id: number;
+    onFinishEdit: (id: number, title?: string) => void;
+}
+
+function TaskEditItem(props: TaskEditItemProps) {
+    const [value, setValue] = useState(props.task.title);
+    const componentRef = useRef<HTMLDivElement>(null);
+
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setValue(event.target.value);
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key == 'Enter') {
+            props.onFinishEdit(props.id, value);
+        }
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+        if (componentRef.current && !componentRef.current.contains(event.target as HTMLElement)) {
+            //console.log(value);
+            props.onFinishEdit(props.id, value);
+        }
+    };
+    useEffect(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [value]);
+
+    return <div ref={componentRef}>
+        <span>{props.task.done ? "[X]" : "[ ]"}</span>
+        <input
+            autoFocus
+            type="text"
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+        />
+        <span onClick={() => props.onFinishEdit(props.id, value)}>[OK]</span>
+        <span onClick={() => props.onFinishEdit(props.id)}>[CANCEL]</span>
     </div>
 }
 
-interface TaskNewParams {
+interface TaskNewProps {
     onNewTask: (title: string) => void;
+    enabled: boolean;
 }
 
-function TaskNew(params: TaskNewParams) {
+function TaskNew(props: TaskNewProps) {
     const [value, setValue] = useState('');
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +89,7 @@ function TaskNew(params: TaskNewParams) {
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.key == 'Enter') {
-            params.onNewTask(value);
+            props.onNewTask(value);
             setValue("");
         }
     };
@@ -45,12 +101,14 @@ function TaskNew(params: TaskNewParams) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder="New task..."
+            disabled={!props.enabled}
         />
     </div>
 }
 
 export function TaskList(props: { tasks: Task[] }) {
     const [tasks, setTasks] = useState(props.tasks);
+    const [editItem, setEditItem] = useState(-1);
 
     const setDone = (id: number, done: boolean) => {
         const newTasks = tasks.map((task, index) => {
@@ -76,15 +134,42 @@ export function TaskList(props: { tasks: Task[] }) {
         setTasks(newTasks);
     }
 
-    const list = tasks.map((task, id) => <TaskItem
-        task={task}
-        key={id}
-        id={id}
-        onSetDone={setDone}
-        onDelete={deleteItem}
-    />);
+    const beginEdit = (id: number) => {
+        setEditItem(id);
+    }
+
+    const finishEdit = (id: number, title?: string) => {
+        setEditItem(-1);
+        if (title) {
+            const newTasks = tasks.map((task, index) => {
+                if (index == id) {
+                    return { ...task, title };
+                } else {
+                    return task;
+                }
+            })
+            setTasks(newTasks);
+        }
+    }
+
+    const list = tasks.map((task, id) => id == editItem ?
+        <TaskEditItem
+            task={task}
+            key={id}
+            id={id}
+            onFinishEdit={finishEdit}
+        /> :
+        <TaskItem
+            task={task}
+            key={id}
+            id={id}
+            interactive={editItem < 0}
+            onSetDone={setDone}
+            onDelete={deleteItem}
+            onBeginEdit={beginEdit}
+        />);
     return <div>
         {list}
-        <TaskNew onNewTask={addItem} />
+        <TaskNew onNewTask={addItem} enabled={editItem < 0} />
     </div>
 }
