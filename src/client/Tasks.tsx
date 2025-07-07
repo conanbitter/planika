@@ -10,15 +10,21 @@ interface TaskItemProps {
 }
 
 function TaskItem(props: TaskItemProps) {
+    const [hovering, setHovering] = useState(false);
+
     const toggleDone = () => {
         props.onSetDone(props.id, !props.task.done);
     }
 
-    return <div>
+    const edits = hovering ? [
+        <span onClick={() => props.onDelete(props.id)}>[DEL]</span>,
+        <span onClick={() => props.onBeginEdit(props.id)}>[EDIT]</span>
+    ] : [];
+
+    return <div onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)}>
         <span onClick={toggleDone}>{props.task.done ? "[X]" : "[ ]"}</span>
         <span>{props.task.title}</span>
-        <span onClick={() => props.onDelete(props.id)}>[DEL]</span>
-        <span onClick={() => props.onBeginEdit(props.id)}>[EDIT]</span>
+        {edits}
     </div>
 }
 
