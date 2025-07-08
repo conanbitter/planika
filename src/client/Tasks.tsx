@@ -1,40 +1,40 @@
 import { useEffect, useRef, useState } from "react";
 import type { Task } from "../common";
 
-interface TaskItemProps {
+interface TaskActiveProps {
     task: Task;
     id: number;
+    hovering: boolean;
     onSetDone: (id: number, done: boolean) => void;
     onDelete: (id: number) => void;
     onBeginEdit: (id: number) => void;
 }
 
-function TaskItem(props: TaskItemProps) {
-    const [hovering, setHovering] = useState(false);
+function TaskActive(props: TaskActiveProps) {
 
     const toggleDone = () => {
         props.onSetDone(props.id, !props.task.done);
     }
 
-    const edits = hovering ? [
+    const edits = props.hovering ? [
         <span onClick={() => props.onDelete(props.id)}>[DEL]</span>,
         <span onClick={() => props.onBeginEdit(props.id)}>[EDIT]</span>
     ] : [];
 
-    return <div onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)}>
+    return <div>
         <span onClick={toggleDone}>{props.task.done ? "[X]" : "[ ]"}</span>
         <span>{props.task.title}</span>
         {edits}
     </div>
 }
 
-interface TaskEditItemProps {
+interface TaskEditProps {
     task: Task;
     id: number;
     onFinishEdit: (id: number, title?: string) => void;
 }
 
-function TaskEditItem(props: TaskEditItemProps) {
+function TaskEdit(props: TaskEditProps) {
     const [value, setValue] = useState(props.task.title);
     const componentRef = useRef<HTMLDivElement>(null);
 
@@ -75,15 +75,50 @@ function TaskEditItem(props: TaskEditItemProps) {
     </div>
 }
 
-interface TaskFixedProps {
+interface TaskPassiveProps {
     task: Task;
 }
 
-function TaskFixedItem(props: TaskFixedProps) {
+function TaskPassive(props: TaskPassiveProps) {
     return <div>
         <span>{props.task.done ? "[X]" : "[ ]"}</span>
         <span>{props.task.title}</span>
     </div>
+}
+
+type TaskItemState = "active" | "passive" | "edit";
+
+interface TaskItemProps {
+    task: Task;
+    id: number;
+    state: TaskItemState;
+    onSetDone: (id: number, done: boolean) => void;
+    onDelete: (id: number) => void;
+    onBeginEdit: (id: number) => void;
+    onFinishEdit: (id: number, title?: string) => void;
+}
+
+function TaskItem(props: TaskItemProps) {
+    const [hovering, setHovering] = useState(false);
+    let task = null;
+    switch (props.state) {
+        case "active":
+            task = <TaskActive
+                task={props.task}
+                id={props.id}
+                hovering={hovering}
+                onSetDone={props.onSetDone}
+                onBeginEdit={props.onBeginEdit}
+                onDelete={props.onDelete} />
+            break;
+        case "passive":
+            task = <TaskPassive task={props.task} />
+            break;
+        case "edit":
+            task = <TaskEdit task={props.task} id={props.id} onFinishEdit={props.onFinishEdit} />
+            break;
+    }
+    return <div onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)}>{task}</div>
 }
 
 interface TaskNewProps {
@@ -164,25 +199,22 @@ export function TaskList(props: { tasks: Task[] }) {
     }
 
     const list = tasks.map((task, id) => {
+        let state: TaskItemState = "active";
         if (id == editItem) {
-            return <TaskEditItem
-                task={task}
-                key={id}
-                id={id}
-                onFinishEdit={finishEdit}
-            />
-        } else if (editItem < 0) {
-            return <TaskItem
-                task={task}
-                key={id}
-                id={id}
-                onSetDone={setDone}
-                onDelete={deleteItem}
-                onBeginEdit={beginEdit}
-            />
-        } else {
-            return <TaskFixedItem task={task} key={id} />
+            state = "edit";
+        } else if (editItem >= 0) {
+            state = "passive";
         }
+        return <TaskItem
+            task={task}
+            key={id}
+            id={id}
+            state={state}
+            onSetDone={setDone}
+            onDelete={deleteItem}
+            onBeginEdit={beginEdit}
+            onFinishEdit={finishEdit}
+        />
     });
     return <div>
         {list}
